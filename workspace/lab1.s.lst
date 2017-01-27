@@ -1,116 +1,115 @@
 68K GAS  ./lab1.s 			page 1
 
 
-   1               	;$1000 start
-   2               	;$4000-$4003 4 senaste hexa-tecknen
-   3               	;$4010-$4013 korrekt kod
-   4               	;$4020- textstrﾃ､ngen'Felakig kod!'
-   5               	;$7000 startvﾃ､rde fﾃ stackpekaren 
-   6               	;set stackpointer->subrutin->...->move to monitor...rts
-   7               	start:
-   8 0000 2E7C 0000 		move.l #$7000,a7   	;sﾃtackpekaren till a7 (a7 brukar vara tom)
-   8      7000 
-   9               	
-  10 0006 4EBA 0024 		jsr printchar		;utskrift
-  11 000a 4EBA 0038 		jsr setuppia		;drar igﾃ･ng PIA A,B,C
-  12 000e 4EBA 0064 		jsr printstring		;skriver ut en lista av tecken (ord)
-  13 0012 4EBA 0076 		jsr deactivatealarm	;avaktivera larm
-  14 0016 4EBA 0090 	        jsr activatealarm	;aktivera larm
-  15 001a 4EBA 00AA 	        jsr getkey     		;keylistener
-  16 001e 4EBA 00BA 	        jsr addkey     		;tangent->inbuffer
-  17 0022 4EBA 00CE 		jsr clearinput		;rensa inbuffer
-  18 0026 4EBA 00D4 		jsr checkcode  		;kodcheck
-  19 002a 4E75      		rts
-  20               		
-  21               	printchar:		    ;utskrift i terminal
-  22 002c 1F05      		move.b d5,-(a7)     ; Spara undan d5 (bit 7-0) pp stacken
-  23               	waittx:	
-  24 002e 1A39 0001 		move.b $10040,d5    ; Serieportens statusregister
-  24      0040 
-  25 0034 0205 0002 		and.b  #2,d5        ; Isolera bit 1 (Ready to transmit)
-  26 0038 67F4      		beq waittx          ; Vﾃ､nta tills serieporten ﾃ､r klar att sﾃ､nda
-  27 003a 13C4 0001 		move.b d4,$10042    ; Skicka ut
-  27      0042 
-  28 0040 1A1F      		move.b (a7)+,d5     ; ﾃ･terstﾃ､ll d5
-  29 0042 4E75      		rts 		    ; Tips: Sﾃ､tt en breakpoint hﾃ､r om du har problem med trace
-  30               	
-  31               	setuppia:	;initering
-  32 0044 13FC 0000 		move.b #0,$10084    ; Vﾃ､lj datariktningsregistret (DDRA)
-  32      0001 0084 
-  33 004c 13FC 0001 		move.b #1,$10080    ; Sﾃ､tt pinne 0 pﾃ･ PIAA som utgÃ¥ng
-  33      0001 0080 
-  34 0054 13FC 0004 		move.b #4,$10084    ; Vﾃ､lj in/utgﾃ･ngsregistret
-  34      0001 0084 
-  35 005c 13FC 0000 		move.b #0,$10086    ; Vﾃ､lj datariktningsregistret (DDRB)
-  35      0001 0086 
-  36 0064 13FC 0000 		move.b #0,$10082    ; Sﾃ､tt alla pinnar som ingﾃ･ngar
-  36      0001 0082 
-  37 006c 13FC 0004 		move.b #4,$10086    ; Vﾃ､lj in/utgﾃ･ngsregistret
-  37      0001 0086 
-  38               	rts
-  39               	
-  40               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  41               	;;;   Inargument: Pekare till strﾂｨangen i a4
-  42               	;;;   Lﾂｨangd pﾋ啾 strﾂｨangen i d5
-  43               	printstring:
-  44               	;;;   Fﾂｨorberedelseuppgift: Skriv denna subrutin!
-  45               	;;;   vi kan loopa mha printchar och nﾃ､rlﾃ､ngden av d5 ﾃ､r 0
-  46               	;;;   vet vi att alla tecken blir utskrivna
-  47 0074 287C 0000 		move.l #$C126,a4
-  47      C126 
+   1               	;;vanliga misstag kan vara att absolut/omedelbar adresseringsmod #/#$/$
+   2               	;;kontrollera suffix .b (8) .w(16) .l(32)
+   3               	;;glÃ¶m inte att sÃ¤tta stackpekaren
+   4               	;;kolla logiska problem i programmet mha trace
+   5               	;;dela upp programmet i subutiner och testa en i taget
+   6               		
+   7               	;$1000 start
+   8               	;$4000-$4003 4 senaste hexa-tecknen
+   9               	;$4010-$4013 korrekt kod
+  10               	;$4020- textstrﾃ､ngen'Felakig kod!'
+  11               	;$7000 startvﾃ､rde fﾃ stackpekaren 
+  12               	;set stackpointer->subrutin->...->move to monitor...rts
+  13               	start:
+  14 0000 2E7C 0000 		move.l #$7000,a7   	;sﾃtackpekaren till a7 (a7 brukar vara tom)
+  14      7000 
+  15               	
+  16 0006 4EBA 0050 		jsr setuppia		;drar igﾃ･ng PIA A,B,C
+  17 000a 4EBA 0100 		jsr code		;bestÃ¤mmer rÃ¤tt kod till lÃ¥set
+  18 000e 4EBA 0116 		jsr error		;spara errormeddelande pÃ¥ $4020
+  19 0012 4EBA 00D6 		jsr clearinput		;rensa inbuffer
+  20 0016 6000 0082 		bra deactivatealarm	;avaktivera larm
+  21 001a 4EBA 0006 		jsr activatealarm	;aktivera larm
+  22 001e 4EBA 009C 		jsr getkey
+  23               		
+  24               	activatealarm:
+  25               	;;; ;   F??orberedelseuppgift: Skriv denna subrutn!
+  26               	;;; ;   samma h??r som de-.s l??s f??rel??snsanteckningar fr??n f?? 04
+  27 0022 23F9 0001 		        move.l $10080,$10082
+  27      0080 0001 
+  27      0082 
+  28 002c 0079 0001 		        or #$01,$10082  ;tând lampan
+  28      0001 0082 
+  29 0034 23F9 0001 		        move.l $10082,$10080
+  29      0082 0001 
+  29      0080 
+  30 003e 4E75      		        rts
+  31               	;;; ; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  32               	
+  33               		
+  34               	printchar:		    ;utskrift i terminal
+  35 0040 1F05      		move.b d5,-(a7)     ; Spara undan d5 (bit 7-0) pp stacken
+  36               	waittx:	
+  37 0042 1A39 0001 		move.b $10040,d5    ; Serieportens statusregister
+  37      0040 
+  38 0048 0205 0002 		and.b  #2,d5        ; Isolera bit 1 (Ready to transmit)
+  39 004c 67F4      		beq waittx          ; Vﾃ､nta tills serieporten ﾃ､r klar att sﾃ､nda
+  40 004e 13C4 0001 		move.b d4,$10042    ; Skicka ut
+  40      0042 
+  41 0054 1A1F      		move.b (a7)+,d5     ; ﾃ･terstﾃ､ll d5
+  42 0056 4E75      		rts 		    ; Tips: Sﾃ､tt en breakpoint hﾃ､r om du har problem med trace
+  43               	
+  44               	setuppia:	;initering
+  45 0058 13FC 0000 		move.b #0,$10084    ; Vﾃ､lj datariktningsregistret (DDRA)
+  45      0001 0084 
+  46 0060 13FC 0001 		move.b #1,$10080    ; Sﾃ､tt pinne 0 pﾃ･ PIAA som utgÃ¥ng
+  46      0001 0080 
+  47 0068 13FC 0004 		move.b #4,$10084    ; Vﾃ､lj in/utgﾃ･ngsregistret
 68K GAS  ./lab1.s 			page 2
 
 
-  48 007a 7A16      		move.l #$16,d5
-  49 007c 2827      		move.l -(a7),d4		;flyttar pekaren till a4
-  50 007e 4EBA FFAC 		jsr printchar		;ﾃ･teranvﾃ､nd stack-funktionaliteten hﾃ､r
-  51 0082 5385      		sub.l #1,d5		;minskar lﾃ､ngd d5 nmed 1 nu neftr printen
-  52 0084 67EE      		beq rts			;ljﾃ､mfﾃｶr om branc ﾃ､r 'equal'
-  53 0086 60EC      		bra printstring		;hoppa direkt till bﾃｶrjan
-  54 0088 4E75      		rts			;gﾃ･ till subrutinen som kallade pﾃ･ printstring
-  55               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  56               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  57               	;;;   Inargument: Inga
-  58               	;;;   Utargument: Inga
-  59               	;;;
-  60               	;;;   Funktion: Slﾂｨacker lysdioden kopplad till PIAA
-  61               	
-  62               	deactivatealarm:
-  63               	;;;   Fﾂｨorberedelseuppgift: Skriv denna subrutin!
-  64               	;;;   hﾃ､r kan man helt enkelt kolla pﾃ･ fﾃｶrelﾃ､sningsanteckningarna frﾃ･n f�
-  65               	;;;   move LED,D
-  66               	;;;    or #$FD,D
-  67               	;;;   move D,LED
-  68 008a 33F9 0001 		move $10080,$10082
-  68      0080 0001 
-  68      0082 
-  69 0094 0079 00FD 		or #$FD,$10082 		;slﾃ､cker lampan
-  69      0001 0082 
-  70 009c 33F9 0001 		move $10082,$10080
-  70      0082 0001 
-  70      0080 
-  71 00a6 4E75      		rts
-  72               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  73               	
-  74               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  75               	;;;   Inargument: Inga
-  76               	;;;   Utargument: Inga
-  77               	;;;
-  78               	;;;   Funktion: Tﾂｨander lysdioden kopplad till PIAA
-  79               	activatealarm:	
-  80               	;;;   Fﾂｨorberedelseuppgift: Skriv denna subrutn!
-  81               	;;;   samma hﾃ､r som de-.s lﾃ､s fﾃｶrelﾃ､snsanteckningar frﾃ･n fﾃｶ 04
-  82 00a8 33F9 0001 		move $10080,$10082
-  82      0080 0001 
-  82      0082 
-  83 00b2 0079 0001 	        or #$01,$10082	;tÃnd lampan
-  83      0001 0082 
-  84 00ba 33F9 0001 	        move $10082,$10080
-  84      0082 0001 
-  84      0080 
-  85 00c4 4E75      	        rts
+  47      0001 0084 
+  48 0070 13FC 0000 		move.b #0,$10086    ; Vﾃ､lj datariktningsregistret (DDRB)
+  48      0001 0086 
+  49 0078 13FC 0000 		move.b #0,$10082    ; Sﾃ､tt alla pinnar som ingﾃ･ngar
+  49      0001 0082 
+  50 0080 13FC 0004 		move.b #4,$10086    ; Vﾃ､lj in/utgﾃ･ngsregistret
+  50      0001 0086 
+  51 0088 4E75      		rts
+  52               	
+  53               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  54               	;;;   Inargument: Pekare till strﾂｨangen i a4
+  55               	;;;   Lﾂｨangd pﾋ啾 strﾂｨangen i d5
+  56               	printstring:
+  57               	;;;   Fﾂｨorberedelseuppgift: Skriv denna subrutin!
+  58               	;;;   vi kan loopa mha printchar och nﾃ､rlﾃ､ngden av d5 ﾃ､r 0
+  59               	;;;   vet vi att alla tecken blir utskrivna
+  60 008a 2827      		move.l -(a7),d4		;flyttar pekaren till a4
+  61 008c 4EBA FFB2 		jsr printchar		;ﾃ･teranvﾃ､nd stack-funktionaliteten hﾃ､r
+  62 0090 5385      		sub.l #1,d5		;minskar lﾃ､ngd d5 nmed 1 nu neftr printen
+  63 0092 6704      		beq fin			;ljﾃ､mfﾃｶr om branc ﾃ､r 'equal'
+  64 0094 60F4      		bra printstring		;hoppa direkt till bﾃｶrjan
+  65 0096 4E75      		rts			;gﾃ･ till subrutinen som kallade pﾃ･ printstring
+  66               	
+  67 0098 4E75      	fin:	rts			;hoppa tillbaka om alla element Ãr utskrvna
+  68               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  69               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  70               	;;;   Inargument: Inga
+  71               	;;;   Utargument: Inga
+  72               	;;;
+  73               	;;;   Funktion: Slﾂｨacker lysdioden kopplad till PIAA
+  74               	
+  75               	deactivatealarm:
+  76               	;;;   Fﾂｨorberedelseuppgift: Skriv denna subrutin!
+  77               	;;;   hﾃ､r kan man helt enkelt kolla pﾃ･ fﾃｶrelﾃ､sningsanteckningarna frﾃ･n f�
+  78               	;;;   move LED,D
+  79               	;;;    or #$FD,D
+  80               	;;;   move D,LED
+  81 009a 23F9 0001 		move.l $10080,$10082
+  81      0080 0001 
+  81      0082 
+  82 00a4 0079 00FD 		or #$FD,$10082 		;slﾃ､cker lampan
+  82      0001 0082 
+  83 00ac 23F9 0001 		move.l $10082,$10080
+  83      0082 0001 
+  83      0080 
+  84 00b6 4EBA 0032 		jsr clearinput
+  85 00ba 4E75      		rts			;undrar om denna rts behÃ¶vs
   86               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  87               	
+  87               		
   88               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   89               	;;;   Inargument: Inga
   90               	;;;   Utargument: Tryckt knappt returneras i d4
@@ -118,18 +117,17 @@
   92               	;;;   Fﾂｨorberedelseuppgift: Skriv denna subrutin!
   93               	;;;   hﾃ､r lﾃ､ser vi av piab 0, piab 1, piab 2, piab 3 med abcd och a=MSB
   94               	;;;   kolla setuppia-rutinen fﾃｶ ingﾃ･ngar till hexa-tangentborde
+  95               	;;;   om hexa-tecknet ﾃ､r mellan 0 och 9 skrivs en siffra utannars inte
 68K GAS  ./lab1.s 			page 3
 
 
-  95               	;;;   om hexa-tecknet ﾃ､r mellan 0 och 9 skrivs en siffra utannars inte
-  96 00c6 2A39 0001 		move.l $10082,d5 	;inmatning frﾃ･n PIAB
-  96      0082 
-  97               	
-  98 00cc 21C5 4010 		move.l d5,$4010		;inmatning av kod till minne
-  99 00d0 21FC 0000 		move.l #$1234,$4000	;korrekt kod
-  99      1234 4000 
- 100               	
- 101 00d8 4E75      		rts
+  96 00bc 183C 0000 		move.b #$00,d4		;tÃ¶m minnet
+  97 00c0 2A39 0001 		move.l $10082,d5 	;inmatning frﾃ･n PIAB
+  97      0082 
+  98 00c6 0C04 0009 	        cmp.b #9,d4		;kollar om hexkey ??r st??rre ??n 9
+  99 00ca 6FF0      		jle getkey	 	;om d4<=9 lÃ¤ggstecknet pÃ¥ stacken
+ 100 00cc 21C4 4000 		move.l d4,$4000		;inmatning av kod till minne
+ 101 00d0 4E75      		rts
  102               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
  103               	
  104               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -140,15 +138,15 @@
  109               	;;;   $4000-$4002. Lagrar sedan inneh???llet i d4 p??? adress $4003.
  110               	addkey:
  111               	;;;   F??orberedelseuppgift: Skriv denna subrutin
- 112 00da 0C04 0009 		        cmp.b #9,d4 	;kollar om hexkey ??r st??rre ??n 9
- 113 00de 6E10      		        bgt g_t_9	;om d4 sst?rre ?n??9->hoppa ut
- 114 00e0 2838 4010 		        move.l $4010,d4 ;annars detta
- 115 00e4 E18C      		        lsl.l #8,d4     ;forts??tter vidare i str??ngen
- 116 00e6 21C4 4010 		        move.l d4,$4010 ;flyttar tillbaka d3 till 4 senaste hexa-tecknen
- 117 00ea 21C4 4013 		        move.l d4,$4013 ;senaste siffran i PIAB
- 118 00ee 4E75      		        rts
+ 112 00d2 0C04 0009 		        cmp.b #9,d4 	;kollar om hexkey ??r st??rre ??n 9
+ 113 00d6 6E10      		        bgt g_t_9	;om d4 sst?rre ?n??9->hoppa ut
+ 114 00d8 2838 4010 		        move.l $4010,d4 ;annars detta
+ 115 00dc E18C      		        lsl.l #8,d4     ;forts??tter vidare i str??ngen
+ 116 00de 21C4 4010 		        move.l d4,$4010 ;flyttar tillbaka d3 till 4 senaste hexa-tecknen
+ 117 00e2 21C4 4013 		        move.l d4,$4013 ;senaste siffran i PIAB
+ 118 00e6 4E75      		        rts
  119               	g_t_9:
- 120 00f0 4E75      		        rts
+ 120 00e8 4E75      		        rts
  121               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
  122               		
  123               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -160,9 +158,9 @@
  129               	;;;   FÂ¨orberedelseuppgift: Skriv denna subrutin
  130               	;;;   HÃ¤r kan i fylla minnet med 20 bitar (minneskapaciteten i MC68008)
  131               	;;;   typ som setup i dugga1 fast istÃ¤ï¿½llet med tomma vÃ¤rden
- 132 00f2 21FC 000F 		move.l #$fffff,$4000
+ 132 00ea 21FC FFFF 		move.l #$ffffffff,$4000
  132      FFFF 4000 
- 133 00fa 4E75      		rts
+ 133 00f2 4E75      		rts
  134               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
  135               	
  136               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -172,16 +170,58 @@
  140               	;;;   hoppa till ytterligare subrutiner och Ã¤ndra
  141               	checkcode:	
  142               	;;;   FÂ¨orberedelseuppgift: Skriv denna subrutin
- 143 00fc 2438 4000 		move.l $4000,d2 	;vi kollar input
- 144 0100 2638 4010 		move.l $4010,d3		;vi lÃ¤gger fram korrekt kod
- 145 0104 B682      		cmp.l d2,d3		;vi jÃ¤mfÃ¶input med korrekt kod
- 146 0106 6706      		beq correct		;om rkorrekt sÃ¤tts d4 till 1
- 147 0108 183C 0000 		move.b #0,d4		;annars 0 i d4
- 148 010c 4E75      		rts
+ 143 00f4 2438 4010 		move.l $4010,d2 	;vi kollar input
+ 144 00f8 2638 4000 		move.l $4000,d3		;vi lÃ¤gger fram korrekt kod
+ 145 00fc B682      		cmp.l d2,d3		;vi jÃ¤mfÃ¶input med korrekt kod
+ 146 00fe 6706      		beq correct		;om rkorrekt sÃ¤tts d4 till 1
+ 147 0100 183C 0000 		move.b #0,d4		;annars 0 i d4
+ 148 0104 4E75      		rts
+ 149               	correct:
+ 150 0106 183C 0001 		move.b #1,d4		;checkcode hoppar hit om d2 och d3 Ã¤r samma
 68K GAS  ./lab1.s 			page 4
 
 
- 149               	correct:
- 150 010e 183C 0001 		move.b #1,d4		;checkcode hoppar hit om d2 och d3 Ã¤r samma
- 151 0112 4E75      		rts
+ 151 010a 4E75      		rts
  152               	;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 153               	
+ 154               	code:
+ 155 010c 11FC 0000 		move.b #$00,$4010
+ 155      4010 
+ 156 0112 11FC 0000 		move.b #$00,$4011
+ 156      4011 
+ 157 0118 11FC 0000 		move.b #$00,$4012
+ 157      4012 
+ 158 011e 11FC 0000 		move.b #$00,$4013
+ 158      4013 
+ 159 0124 4E75      		rts
+ 160               	
+ 161               	error:
+ 162 0126 1A3C 000E 	        move.b #14,d5		;lÃ¤ngd av meddelande
+ 163               	
+ 164 012a 11FC 0046 	        move.b #'F',$4020 	;meddelande
+ 164      4020 
+ 165 0130 11FC 0045 	        move.b #'E',$4021
+ 165      4021 
+ 166 0136 11FC 004C 	        move.b #'L',$4022
+ 166      4022 
+ 167 013c 11FC 0041 	        move.b #'A',$4023
+ 167      4023 
+ 168 0142 11FC 004B 	        move.b #'K',$4024
+ 168      4024 
+ 169 0148 11FC 0054 	        move.b #'T',$4025
+ 169      4025 
+ 170 014e 11FC 0049 	        move.b #'I',$4026
+ 170      4026 
+ 171 0154 11FC 0047 	        move.b #'G',$4027
+ 171      4027 
+ 172 015a 11FC 0020 	        move.b #' ',$4028
+ 172      4028 
+ 173 0160 11FC 004B 	        move.b #'K',$4029
+ 173      4029 
+ 174 0166 11FC 004F 	        move.b #'O',$402A
+ 174      402A 
+ 175 016c 11FC 0044 	        move.b #'D',$402B
+ 175      402B 
+ 176 0172 11FC 0021 	        move.b #'!',$402C
+ 176      402C 
+ 177 0178 4E75      	        rts

@@ -1,3 +1,9 @@
+;;vanliga misstag kan vara att absolut/omedelbar adresseringsmod #/#$/$
+;;kontrollera suffix .b (8) .w(16) .l(32)
+;;glÃ¶m inte att sÃ¤tta stackpekaren
+;;kolla logiska problem i programmet mha trace
+;;dela upp programmet i subutiner och testa en i taget
+	
 ;$1000 start
 ;$4000-$4003 4 senaste hexa-tecknen
 ;$4010-$4013 korrekt kod
@@ -7,16 +13,23 @@
 start:
 	move.l #$7000,a7   	;sﾃtackpekaren till a7 (a7 brukar vara tom)
 
-	jsr printchar		;utskrift
 	jsr setuppia		;drar igﾃ･ng PIA A,B,C
-	jsr printstring		;skriver ut en lista av tecken (ord)
-	jsr deactivatealarm	;avaktivera larm
-        jsr activatealarm	;aktivera larm
-        jsr getkey     		;keylistener
-        jsr addkey     		;tangent->inbuffer
+	jsr code		;bestÃ¤mmer rÃ¤tt kod till lÃ¥set
+	jsr error		;spara errormeddelande pÃ¥ $4020
 	jsr clearinput		;rensa inbuffer
-	jsr checkcode  		;kodcheck
-	rts
+	bra deactivatealarm	;avaktivera larm
+	jsr activatealarm	;aktivera larm
+	jsr getkey
+	
+activatealarm:
+;;; ;   F??orberedelseuppgift: Skriv denna subrutn!
+;;; ;   samma h??r som de-.s l??s f??rel??snsanteckningar fr??n f?? 04
+	        move.l $10080,$10082
+	        or #$01,$10082  ;tând lampan
+	        move.l $10082,$10080
+	        rts
+;;; ; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 	
 printchar:		    ;utskrift i terminal
 	move.b d5,-(a7)     ; Spara undan d5 (bit 7-0) pp stacken
@@ -35,7 +48,7 @@ setuppia:	;initering
 	move.b #0,$10086    ; Vﾃ､lj datariktningsregistret (DDRB)
 	move.b #0,$10082    ; Sﾃ､tt alla pinnar som ingﾃ･ngar
 	move.b #4,$10086    ; Vﾃ､lj in/utgﾃ･ngsregistret
-rts
+	rts
 
 ;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;   Inargument: Pekare till strﾂｨangen i a4
@@ -44,14 +57,14 @@ printstring:
 ;;;   Fﾂｨorberedelseuppgift: Skriv denna subrutin!
 ;;;   vi kan loopa mha printchar och nﾃ､rlﾃ､ngden av d5 ﾃ､r 0
 ;;;   vet vi att alla tecken blir utskrivna
-	move.l #$C126,a4
-	move.l #$16,d5
 	move.l -(a7),d4		;flyttar pekaren till a4
 	jsr printchar		;ﾃ･teranvﾃ､nd stack-funktionaliteten hﾃ､r
 	sub.l #1,d5		;minskar lﾃ､ngd d5 nmed 1 nu neftr printen
-	beq rts			;ljﾃ､mfﾃｶr om branc ﾃ､r 'equal'
+	beq fin			;ljﾃ､mfﾃｶr om branc ﾃ､r 'equal'
 	bra printstring		;hoppa direkt till bﾃｶrjan
 	rts			;gﾃ･ till subrutinen som kallade pﾃ･ printstring
+
+fin:	rts			;hoppa tillbaka om alla element Ãr utskrvna
 ;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;   Inargument: Inga
@@ -65,26 +78,13 @@ deactivatealarm:
 ;;;   move LED,D
 ;;;    or #$FD,D
 ;;;   move D,LED
-	move $10080,$10082
+	move.l $10080,$10082
 	or #$FD,$10082 		;slﾃ､cker lampan
-	move $10082,$10080
-	rts
+	move.l $10082,$10080
+	jsr clearinput
+	rts			;undrar om denna rts behÃ¶vs
 ;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;   Inargument: Inga
-;;;   Utargument: Inga
-;;;
-;;;   Funktion: Tﾂｨander lysdioden kopplad till PIAA
-activatealarm:	
-;;;   Fﾂｨorberedelseuppgift: Skriv denna subrutn!
-;;;   samma hﾃ､r som de-.s lﾃ､s fﾃｶrelﾃ､snsanteckningar frﾃ･n fﾃｶ 04
-	move $10080,$10082
-        or #$01,$10082	;tÃnd lampan
-        move $10082,$10080
-        rts
-;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+	
 ;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;   Inargument: Inga
 ;;;   Utargument: Tryckt knappt returneras i d4
@@ -93,11 +93,11 @@ getkey:
 ;;;   hﾃ､r lﾃ､ser vi av piab 0, piab 1, piab 2, piab 3 med abcd och a=MSB
 ;;;   kolla setuppia-rutinen fﾃｶ ingﾃ･ngar till hexa-tangentborde
 ;;;   om hexa-tecknet ﾃ､r mellan 0 och 9 skrivs en siffra utannars inte
+	move.b #$00,d4		;tÃ¶m minnet
 	move.l $10082,d5 	;inmatning frﾃ･n PIAB
-
-	move.l d5,$4010		;inmatning av kod till minne
-	move.l #$1234,$4000	;korrekt kod
-
+        cmp.b #9,d4		;kollar om hexkey ??r st??rre ??n 9
+	jle getkey	 	;om d4<=9 lÃ¤ggstecknet pÃ¥ stacken
+	move.l d4,$4000		;inmatning av kod till minne
 	rts
 ;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -129,7 +129,7 @@ clearinput:
 ;;;   FÂ¨orberedelseuppgift: Skriv denna subrutin
 ;;;   HÃ¤r kan i fylla minnet med 20 bitar (minneskapaciteten i MC68008)
 ;;;   typ som setup i dugga1 fast istÃ¤ï¿½llet med tomma vÃ¤rden
-	move.l #$fffff,$4000
+	move.l #$ffffffff,$4000
 	rts
 ;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -140,8 +140,8 @@ clearinput:
 ;;;   hoppa till ytterligare subrutiner och Ã¤ndra
 checkcode:	
 ;;;   FÂ¨orberedelseuppgift: Skriv denna subrutin
-	move.l $4000,d2 	;vi kollar input
-	move.l $4010,d3		;vi lÃ¤gger fram korrekt kod
+	move.l $4010,d2 	;vi kollar input
+	move.l $4000,d3		;vi lÃ¤gger fram korrekt kod
 	cmp.l d2,d3		;vi jÃ¤mfÃ¶input med korrekt kod
 	beq correct		;om rkorrekt sÃ¤tts d4 till 1
 	move.b #0,d4		;annars 0 i d4
@@ -150,4 +150,29 @@ correct:
 	move.b #1,d4		;checkcode hoppar hit om d2 och d3 Ã¤r samma
 	rts
 ;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+code:
+	move.b #$00,$4010
+	move.b #$00,$4011
+	move.b #$00,$4012
+	move.b #$00,$4013
+	rts
+
+error:
+        move.b #14,d5		;lÃ¤ngd av meddelande
+
+        move.b #'F',$4020 	;meddelande
+        move.b #'E',$4021
+        move.b #'L',$4022
+        move.b #'A',$4023
+        move.b #'K',$4024
+        move.b #'T',$4025
+        move.b #'I',$4026
+        move.b #'G',$4027
+        move.b #' ',$4028
+        move.b #'K',$4029
+        move.b #'O',$402A
+        move.b #'D',$402B
+        move.b #'!',$402C
+        rts
 	
