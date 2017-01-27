@@ -10,12 +10,31 @@
 ;$4020- textstrﾃ､ngen'Felakig kod!'
 ;$7000 startvﾃ､rde fﾃ stackpekaren 
 ;set stackpointer->subrutin->...->move to monitor...rts
-start:
+setup:
 	move.l #$7000,a7   	;sﾃtackpekaren till a7 (a7 brukar vara tom)
 
+	move.b #$00,$4010	;kombination fÃ¶r avlarmning
+        move.b #$00,$4011
+        move.b #$00,$4012
+        move.b #$00,$4013
+
+        move.b #14,d5		;lÃ¤ngd av'FELAKTIG KOD!'
+
+        move.b #'F',$4020 	;meddelande
+        move.b #'E',$4021
+        move.b #'L',$4022
+        move.b #'A',$4023
+        move.b #'K',$4024
+        move.b #'T',$4025
+        move.b #'I',$4026
+        move.b #'G',$4027
+        move.b #' ',$4028
+        move.b #'K',$4029
+        move.b #'O',$402A
+        move.b #'D',$402B
+        move.b #'!',$402C
+
 	jsr setuppia		;drar igﾃ･ng PIA A,B,C
-	jsr code		;bestÃ¤mmer rÃ¤tt kod till lÃ¥set
-	jsr error		;spara errormeddelande pÃ¥ $4020
 	jsr clearinput		;rensa inbuffer
 	bra deactivatealarm	;avaktivera larm
 	jsr activatealarm	;aktivera larm
@@ -30,7 +49,6 @@ activatealarm:
 	        rts
 ;;; ; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-	
 printchar:		    ;utskrift i terminal
 	move.b d5,-(a7)     ; Spara undan d5 (bit 7-0) pp stacken
 waittx:	
@@ -94,9 +112,11 @@ getkey:
 ;;;   kolla setuppia-rutinen fﾃｶ ingﾃ･ngar till hexa-tangentborde
 ;;;   om hexa-tecknet ﾃ､r mellan 0 och 9 skrivs en siffra utannars inte
 	move.b #$00,d4		;tÃ¶m minnet
-	move.l $10082,d5 	;inmatning frﾃ･n PIAB
-        cmp.b #9,d4		;kollar om hexkey ??r st??rre ??n 9
-	jle getkey	 	;om d4<=9 lÃ¤ggstecknet pÃ¥ stacken
+	move.b $10082,d5 	;inmatning frﾃ･n PIAB
+	move.b d5,$4000		;lagra senaste siffran
+        cmp.b #'A',d5		;kollar om hexkey ??r st??rre ??n 9
+	bgt getkey		;om hÃ¶gre Ã¤n A->hoppa upp igen
+	jsr addkey	 	;om d4<=9 lÃ¤ggstecknet pÃ¥ stacken
 	move.l d4,$4000		;inmatning av kod till minne
 	rts
 ;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -109,11 +129,10 @@ getkey:
 ;;;   $4000-$4002. Lagrar sedan inneh???llet i d4 p??? adress $4003.
 addkey:
 ;;;   F??orberedelseuppgift: Skriv denna subrutin
-	        cmp.b #9,d4 	;kollar om hexkey ??r st??rre ??n 9
-	        bgt g_t_9	;om d4 sst?rre ?n??9->hoppa ut
-	        move.l $4010,d4 ;annars detta
-	        lsl.l #8,d4     ;forts??tter vidare i str??ngen
-	        move.l d4,$4010 ;flyttar tillbaka d3 till 4 senaste hexa-tecknen
+	        cmp.b #'A',d4 	;kollar om hexkey ??r st??rre ??n 9
+		beq activatealarm
+	        lsl.w #8,d4     ;forts??tter vidare i str??ngen
+	        move.l d4,$4000 ;flyttar tillbaka d3 till 4 senaste hexa-tecknen
 	        move.l d4,$4013 ;senaste siffran i PIAB
 	        rts
 g_t_9:
@@ -150,29 +169,3 @@ correct:
 	move.b #1,d4		;checkcode hoppar hit om d2 och d3 Ã¤r samma
 	rts
 ;;; ; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-code:
-	move.b #$00,$4010
-	move.b #$00,$4011
-	move.b #$00,$4012
-	move.b #$00,$4013
-	rts
-
-error:
-        move.b #14,d5		;lÃ¤ngd av meddelande
-
-        move.b #'F',$4020 	;meddelande
-        move.b #'E',$4021
-        move.b #'L',$4022
-        move.b #'A',$4023
-        move.b #'K',$4024
-        move.b #'T',$4025
-        move.b #'I',$4026
-        move.b #'G',$4027
-        move.b #' ',$4028
-        move.b #'K',$4029
-        move.b #'O',$402A
-        move.b #'D',$402B
-        move.b #'!',$402C
-        rts
-	
