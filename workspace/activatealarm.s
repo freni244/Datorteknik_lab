@@ -6,6 +6,7 @@
 activatealarm
 ;;  F¨orberedelseuppgift: Skriv denna subrutn!
 ;;  samma här som de-.s läs föreläsnsanteckningar från fö4:
+activatealarm
 	move LED,D
 	or #$01,D 	;t�nd diod
 	move D,LED

@@ -79,6 +79,8 @@ printstring:
 	jsr printchar		;ﾃ･teranvﾃ､nd stack-funktionaliteten hﾃ､r
 	sub.l #1,d5		;minskar lﾃ､ngd d5 nmed 1 nu neftr printen
 	beq fin			;ljﾃ､mfﾃｶr om branc ﾃ､r 'equal'
+				;; Förslag: 	ben printstring ; om 0 gå vidare annars branch
+				;;		rts
 	bra printstring		;hoppa direkt till bﾃｶrjan
 	rts			;gﾃ･ till subrutinen som kallade pﾃ･ printstring
 
@@ -98,6 +100,10 @@ deactivatealarm:
 ;;;   move D,LED
 	move.l $10080,$10082
 	or #$FD,$10082 		;slﾃ､cker lampan
+				;; Tror vi ska ha ”and $FE,D” eftersom and släcker och FE=1111 1110 
+				;; väljer pinne 0, där lampan sitter.
+				;; tex 1111 1110 & 0000 1001 = 0000 1000
+				;; Om jag fattat rätt.
 	move.l $10082,$10080
 	jsr clearinput
 	rts			;undrar om denna rts behÃ¶vs
@@ -134,6 +140,10 @@ addkey:
 	        lsl.w #8,d4     ;forts??tter vidare i str??ngen
 	        move.l d4,$4000 ;flyttar tillbaka d3 till 4 senaste hexa-tecknen
 	        move.l d4,$4013 ;senaste siffran i PIAB
+				;; ska det inte vara 4001-4003 som flyttas till 4000-4002
+				;; blir det inte lsr.l #8 4003  ($a $b $c $d) -> ($0 $a $b $c)
+				;; sedan move.l d4,4003 ($d4 $a $b $c)
+				;; Obs: inte alls säker
 	        rts
 g_t_9:
 	        rts
