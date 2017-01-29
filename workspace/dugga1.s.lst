@@ -1,0 +1,52 @@
+68K GAS  ./dugga1.s 			page 1
+
+
+   1               	setup:
+   2 0000 2E7C 0000 	        move.l #$7000,a7
+   2      7000 
+   3 0006 21FC 5ED2 	        move.l #$5ed29943,$4000
+   3      9943 4000 
+   4 000e 21FC CD42 	        move.l #$cd42dc8f,$4004
+   4      DC8F 4004 
+   5 0016 21FC 158D 	        move.l #$158d9def,$4008
+   5      9DEF 4008 
+   6 001e 21FC E589 	        move.l #$e58973ab,$400c
+   6      73AB 400C 
+   7 0026 21FC 8935 	        move.l #$8935eb79,$5000
+   7      EB79 5000 
+   8 002e 21FC F770 	        move.l #$f770f97b,$5004
+   8      F97B 5004 
+   9 0036 21FC E6B3 	        move.l #$e6b312a6,$5008
+   9      12A6 5008 
+  10 003e 21FC 22FC 	        move.l #$22fca01c,$500c
+  10      A01C 500C 
+  11               	
+  12               	start:
+  13 0046 103C 000A 	        move.b  #10,d0
+  14 004a 207C 0000 	        move.l #$4000,a0
+  14      4000 
+  15 0050 227C 0000 	        move.l #$5010,a1
+  15      5010 
+  16               	loop
+  17 0056 1818      	        move.b (a0)+,d4
+  18 0058 1221      	        move.b -(a1),d1
+  19 005a B304      	        eor.b  d1,d4
+  20 005c 4EBA 000E 	        jsr    printchar
+  21 0060 0600 FFFF 	        add.b  #-1,d0
+  22 0064 66F0      	        bne    loop
+  23               	
+  24 0066 1E3C 00E4 	        move.b #228,d7
+  25 006a 4E4E      	        trap   #14
+  26               		
+  27               	
+  28               	printchar:
+  29 006c 1F05      		move.b d5,-(a7) 	; Spara undan d5 (bit 7-0) p˚a stacken
+  30               	waittx
+  31 006e 1A39 0001 		move.b $10040,d5 	; Serieportens statusregister
+  31      0040 
+  32 0074 0205 0002 		and.b #2,d5 		; Isolera bit 1 (Ready to transmit)
+  33 0078 67F4      		beq waittx 		; V¨anta tills serieporten ¨ar klar att s¨anda
+  34 007a 13C4 0001 		move.b d4,$10042 	; Skicka ut
+  34      0042 
+  35 0080 1A1F      		move.b (a7)+,d5 	; ˚Aterst¨all d5
+  36 0082 4E75      		rts
