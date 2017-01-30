@@ -98,14 +98,24 @@ getkey:
 ;har laser vi av piab 0, piab 1, piab 2, piab 3 med abcd och a=MSB
 ;kolla setuppia-rutinen fo ingangar till hexa-tangentborde
 ;om hexa-tecknet ar mellan 0 och 9 skrivs en siffra utannars inte
+;returnerar forst nar knapp slapps (strobe hog till lag)
 	move.b #$00,d4		;tom minnet
 	move.b $10082,d5	;inmatning fran PIAB
 	move.b d5,$4000		;lagra senaste siffran
 	cmp.b #'A',d5		;kollar om hexkey ar storre an 9
 	bgt getkey		;om hogre an A->hoppa upp igen
-	jsr addkey		;om d4<=9 laggstecknet pa stacken
-	move.l d4,$4000		;inmatning av kod till minne
+	jsr strobe		;vanta med att returnera tills knapp slapps ;; 
 	rts
+
+strobe:
+;OBS:ska vara avbrott -> ta bort jsr i getkey...
+	and.b #16,d3		;Isolerar bit 4 = strobe pa PIAB ... 
+	cpm.b #00,d3
+	ben strobe		;om d3 (strobe) 0 -> knapp slappt -> returnera d4 och spara
+	move.l d4,$4000		;inmatning av kod till minne
+	jsr addkey		;om d4<=9 laggstecknet pa stacken
+	rte			;;;rte eller rts
+
 
 addkey:	
 ;Inargument: Vald tangent i d4
@@ -148,33 +158,82 @@ correct:
 	move.b #1,d4	;checkcode hoppar hit om d2 och d3 ar samma
 	rts
 
+;; Felaktigt satt, med jsr och ej avbrott
+;timelimitedopen:
+;; Activates alarm after five seconds unless a key is pressed, except A, 
+;; which activates the alarm directly. 
+;	move.l d5,-(a7) 	; save d5 (needed???)
+;	move.l $10080,$10082
+;	and #$FE,$10082		;slacker lampan
+;	move.l $10082,$10080
+;
+;	move.l #0,d0		; counter for loop (.l 32 bit)
+;	jsr wait	
+;	rts
+;	
+;wait2:
+;	move.l $10082,d5 	; save data from PIAA to d5
+;	cpm #$ffffffff,d5	; if key pressed d5=/=ffffffff (ie cleared) => z=0 => branch
+;	ben checkA      	; else, d5=ffffffff (z=1), no key was pressed continue
+;
+;	add #1,d0
+;	cpm #10000,d0		; delay 5 seconds
+;	ben wait2
+;	move.b (a7)+,d5		; reset d5 (needed???)	
+;	jsr activatealarm	; 5 seconds has passed
+;	rts
+;
+;checkA:
+;	cpm #’A’,d5		
+;	beq activatealarm	; if d5=A z=1 => branch to activatealarm
+;	jsr deactivatealarm	; else deactivatealarm
+;
+;	rts
+;
+;
+;flashdiod:
+;; Makes the diod flash in 1 Hz.
+;	move.l d5,-(a7) 	; save d5 (needed???)
+;	move.l $10080,$10082
+;	xor #$01,10082 		; toggle LED
+;	move.l $10082,$10080
+;	move.w #0,d0		; counter for loop (.w 16 bit)
+;	jsr wait	
+;	rte
+;	
+;wait1:
+;	move.l $10082,d5 	; save data from PIAA to d5
+;	cpm #$ffffffff,d5	; if key pressed d5=/=ffffffff (ie cleared) => z=0 branch
+;	ben getkey      	; else d5=ffffffff (z=1) continue
+;
+;	add #1,d0
+;	cpm #2000,d0		; delay 1 second
+;	ben wait1
+;	move.b (a7)+,d5		; reset d5 (needed???)	
+;	rte
+
+
 
 timelimitedopen:
 ; Activates alarm after five seconds unless a key is pressed, except A, 
 ; which activates the alarm directly. 
 	move.l d5,-(a7) 	; save d5 (needed???)
+	move.l $10080,$10082
+	and #$FE,$10082		;slacker lampan
+	move.l $10082,$10080
+
 	move.l #0,d0		; counter for loop (.l 32 bit)
 	jsr wait	
 	rts
 	
 wait2:
-	move.l $10082,d5 	; save data from PIAA to d5
-	cpm #$ffffffff,d5	; if key pressed d5=/=ffffffff (ie cleared) => z=0 => branch
-	ben checkA      	; else, d5=ffffffff (z=1), no key was pressed continue
+	;avbrott istallet for jsr checkkeypress...
 
-	cpm #$
 	add #1,d0
 	cpm #10000,d0		; delay 5 seconds
 	ben wait2
 	move.b (a7)+,d5		; reset d5 (needed???)	
 	jsr activatealarm	; 5 seconds has passed
-	rts
-
-checkA:
-	cpm #’A’,d5		
-	beq activatealarm	; if d5=A z=1 => branch to activatealarm
-	jsr deactivatealarm	; else deactivatealarm
-
 	rts
 
 
@@ -184,19 +243,28 @@ flashdiod:
 	move.l $10080,$10082
 	xor #$01,10082 		; toggle LED
 	move.l $10082,$10080
-
 	move.w #0,d0		; counter for loop (.w 16 bit)
 	jsr wait	
 	rts
 	
-wait1:
+wait1:	add #1,d0
+	;avbrott istallet for jsr checkkeypress...
+
+	cpm #2000,d0		; delay 1 second
+	ben wait1
+	move.b (a7)+,d5		; reset d5 (needed???)	
+	rts
+
+checkkeypress:
+;avbrott
 	move.l $10082,d5 	; save data from PIAA to d5
 	cpm #$ffffffff,d5	; if key pressed d5=/=ffffffff (ie cleared) => z=0 branch
 	ben getkey      	; else d5=ffffffff (z=1) continue
+	rte
 
-	add #1,d0
-	cpm #2000,d0		; delay 1 second
-	ben wait1
-	move.b (a7)+,d5		; reset d5 (needed???)
-	
+checkA:
+;avbrott
+	cpm #’A’,d5		
+	beq activatealarm	; if d5=A z=1 => branch to activatealarm
+	jsr deactivatealarm	; else deactivatealarm
 	rts
