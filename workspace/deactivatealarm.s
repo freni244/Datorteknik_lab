@@ -2,7 +2,7 @@
 setup:
 	move.l #$7000,a7
 	jsr setuppia
-	jsr activatealarm
+	jsr deactivatealarm
 	move.b #255,d7
 	trap #14
 
@@ -14,18 +14,10 @@ deactivatealarm:
         move.l $10080,$10082
         and #$FE,$10082	;slacker lampan
         move.l $10082,$10080
-	;jsr clearinput
-        rts		;undrar om denna rts behovs
+	;; jsr clearinput
+        rts
 
-activatealarm:
-;las forelasnsanteckningar fran fo 04
-	move.l $10080,$10082
-        or #$01,$10082 ;tand lampan
-	move.l $10082,$10080
-	;jsr flashdiod		
-	rts
-
-;30/1 od: kanske borde testa setuppia med hexatangentbordet
+;30/1 od: kanske borde testa setuppia med hexatangentbordet 
 setuppia:;initering
         move.b #0,$10084 ;Valj datariktningsregistret (DDRA)
         move.b #1,$10080 ;Satt pinne 0 pa PIAA som utgang
