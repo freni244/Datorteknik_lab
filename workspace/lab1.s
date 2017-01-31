@@ -89,7 +89,6 @@ deactivatealarm:
 	move.l $10080,$10082
 	and #$FE,$10082		;slacker lampan
 	move.l $10082,$10080
-	jsr clearinput
 	rts			;undrar om denna rts behovs
 	
 getkey:
@@ -109,12 +108,12 @@ getkey:
 
 strobe:
 ;OBS:ska vara avbrott -> ta bort jsr i getkey...
-	and.b #16,d3		;Isolerar bit 4 = strobe pa PIAB ... 
-	cpm.b #00,d3
-	ben strobe		;om d3 (strobe) 0 -> knapp slappt -> returnera d4 och spara
+	and.b #16,d5		;Isolerar bit 4 = strobe pa PIAB ... 
+	cmp.b #00,d5
+	bne strobe		;om d3 (strobe) 0 -> knapp slappt -> returnera d4 och spara
 	move.l d4,$4000		;inmatning av kod till minne
-	jsr addkey		;om d4<=9 laggstecknet pa stacken
-	rte			;;;rte eller rts
+	jsr addkey		;om d4<=9 laggstecknet pa stacken; har eller efter bgt i getkey
+	rts			;;;rte eller rts
 
 
 addkey:	
@@ -156,6 +155,7 @@ checkcode:
 	
 correct:
 	move.b #1,d4	;checkcode hoppar hit om d2 och d3 ar samma
+	jsr clearinput
 	rts
 
 ;; Felaktigt satt, med jsr och ej avbrott
@@ -173,18 +173,18 @@ correct:
 ;	
 ;wait2:
 ;	move.l $10082,d5 	; save data from PIAA to d5
-;	cpm #$ffffffff,d5	; if key pressed d5=/=ffffffff (ie cleared) => z=0 => branch
-;	ben checkA      	; else, d5=ffffffff (z=1), no key was pressed continue
+;	cmp #$ffffffff,d5	; if key pressed d5=/=ffffffff (ie cleared) => z=0 => branch
+;	bne checkA      	; else, d5=ffffffff (z=1), no key was pressed continue
 ;
 ;	add #1,d0
-;	cpm #10000,d0		; delay 5 seconds
-;	ben wait2
+;	cmp #10000,d0		; delay 5 seconds
+;	bne wait2
 ;	move.b (a7)+,d5		; reset d5 (needed???)	
 ;	jsr activatealarm	; 5 seconds has passed
 ;	rts
 ;
 ;checkA:
-;	cpm #’A’,d5		
+;	cmp #’A’,d5		
 ;	beq activatealarm	; if d5=A z=1 => branch to activatealarm
 ;	jsr deactivatealarm	; else deactivatealarm
 ;
@@ -195,7 +195,7 @@ correct:
 ;; Makes the diod flash in 1 Hz.
 ;	move.l d5,-(a7) 	; save d5 (needed???)
 ;	move.l $10080,$10082
-;	xor #$01,10082 		; toggle LED
+;	xor.l #$01,10082 		; toggle LED
 ;	move.l $10082,$10080
 ;	move.w #0,d0		; counter for loop (.w 16 bit)
 ;	jsr wait	
@@ -203,12 +203,12 @@ correct:
 ;	
 ;wait1:
 ;	move.l $10082,d5 	; save data from PIAA to d5
-;	cpm #$ffffffff,d5	; if key pressed d5=/=ffffffff (ie cleared) => z=0 branch
-;	ben getkey      	; else d5=ffffffff (z=1) continue
+;	cmp #$ffffffff,d5	; if key pressed d5=/=ffffffff (ie cleared) => z=0 branch
+;	bne getkey      	; else d5=ffffffff (z=1) continue
 ;
 ;	add #1,d0
-;	cpm #2000,d0		; delay 1 second
-;	ben wait1
+;	cmp #2000,d0		; delay 1 second
+;	bne wait1
 ;	move.b (a7)+,d5		; reset d5 (needed???)	
 ;	rte
 
@@ -230,8 +230,8 @@ wait2:
 	;avbrott istallet for jsr checkkeypress...
 
 	add #1,d0
-	cpm #10000,d0		; delay 5 seconds
-	ben wait2
+	cmp #10000,d0		; delay 5 seconds
+	bne wait2
 	move.b (a7)+,d5		; reset d5 (needed???)	
 	jsr activatealarm	; 5 seconds has passed
 	rts
@@ -241,7 +241,7 @@ flashdiod:
 ; Makes the diod flash in 1 Hz.
 	move.l d5,-(a7) 	; save d5 (needed???)
 	move.l $10080,$10082
-	xor #$01,10082 		; toggle LED
+	and.l $FE,10082		; turn off	;xor.l #$01,10082 toggle LED
 	move.l $10082,$10080
 	move.w #0,d0		; counter for loop (.w 16 bit)
 	jsr wait	
@@ -250,21 +250,21 @@ flashdiod:
 wait1:	add #1,d0
 	;avbrott istallet for jsr checkkeypress...
 
-	cpm #2000,d0		; delay 1 second
-	ben wait1
+	cmp #2000,d0		; delay 1 second
+	bne wait1
 	move.b (a7)+,d5		; reset d5 (needed???)	
 	rts
 
 checkkeypress:
 ;avbrott
 	move.l $10082,d5 	; save data from PIAA to d5
-	cpm #$ffffffff,d5	; if key pressed d5=/=ffffffff (ie cleared) => z=0 branch
-	ben getkey      	; else d5=ffffffff (z=1) continue
+	cmp.l #$ffffffff,d5	; if key pressed d5=/=ffffffff (ie cleared) => z=0 branch
+	bne getkey      	; else d5=ffffffff (z=1) continue
 	rte
 
 checkA:
 ;avbrott
-	cpm #’A’,d5		
+	cmp.l #’A’,d5		
 	beq activatealarm	; if d5=A z=1 => branch to activatealarm
 	jsr deactivatealarm	; else deactivatealarm
 	rts
