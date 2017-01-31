@@ -98,6 +98,7 @@ getkey:
 ;kolla setuppia-rutinen fo ingangar till hexa-tangentborde
 ;om hexa-tecknet ar mellan 0 och 9 skrivs en siffra utannars inte
 ;returnerar forst nar knapp slapps (strobe hog till lag)
+	move.l -(a7),d5		;spara undan d5
 	move.b #$00,d4		;tom minnet
 	move.b $10082,d5	;inmatning fran PIAB
 	move.b d5,$4000		;lagra senaste siffran
@@ -113,6 +114,7 @@ strobe:
 	bne strobe		;om d3 (strobe) 0 -> knapp slappt -> returnera d4 och spara
 	move.l d4,$4000		;inmatning av kod till minne
 	jsr addkey		;om d4<=9 laggstecknet pa stacken; har eller efter bgt i getkey
+	move.b (a7)+,d5		;aterstall d5
 	rts			;;;rte eller rts
 
 
