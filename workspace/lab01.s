@@ -1,8 +1,8 @@
-;;vanliga misstag kan vara att absolut/omedelbar adresseringsmod #/#$/$
-;;kontrollera suffix .b (8) .w(16) .l(32)
-;;glom inte att satta stackpekaren
-;;kolla logiska problem i programmet mha trace
-;;dela upp programmet i subutiner och testa en i taget
+;vanliga misstag kan vara att absolut/omedelbar adresseringsmod #/#$/$ 
+;kontrollera suffix .b (8) .w(16) .l(32)
+;glom inte att satta stackpekaren
+;kolla logiska problem i programmet mha trace
+;dela upp programmet i subutiner och testa en i taget
 	
 ;$1000 start
 ;$4000-$4003 4 senaste hexa-tecknen
@@ -13,41 +13,47 @@
 setup:
 	move.l #$7000,a7   	;stackpekaren till a7 (a7 brukar vara tom)
 
-	move.b #$00,$4010	;kombination for avlarmning
-        move.b #$00,$4011
-        move.b #$00,$4012
-        move.b #$00,$4013
-
-        move.b #14,d5		;langd av'FELAKTIG KOD!'
-
-        move.b #'F',$4020 	;meddelande
-        move.b #'E',$4021
-        move.b #'L',$4022
-        move.b #'A',$4023
-        move.b #'K',$4024
-        move.b #'T',$4025
-        move.b #'I',$4026
-        move.b #'G',$4027
-        move.b #' ',$4028
-        move.b #'K',$4029
-        move.b #'O',$402A
-        move.b #'D',$402B
-        move.b #'!',$402C
-
 	jsr setuppia		;drar igang PIA A,B,C
+	jsr printerror
+	jsr code
 	jsr clearinput		;rensa inbuffer
-	jsr deactivatealarm	;avaktivera larm
-	;jsr activatealarm	;aktivera larm
+	bra disable		;avaktivera larm
+enable:
+	jsr activatealarm
 	jsr getkey
+	cmp.b #$f,d4
+	beq testcode
+	bra enable
+testcode:
+	jsr checkcode
+	cmp.b #1,d4
+	bra disable
+
+wrongcode:
+	jsr printmsg
+	bra enable
+disable:
+	jsr deactivatealarm
+	jsr clearinput
+disable_func:	
+	jsr getkey
+	cmp.b #$a,d4
+	bne disable_func
+	bra enable
 	
 activatealarm:
-;;; ;   samma har som de-.s las forelasnsanteckningar fran fo 04
-	        move.l $10080,$10082
-	        or #$01,$10082  ;tand lampan
-	        move.l $10082,$10080
-		;jsr flashdiod
-	        rts
-
+;samma har som de-.s las forelasnsanteckningar fran fo 04
+;move.l $10080,$10082
+;or #$01,$10082  ;taÂÂnd lampan
+;move.l $10082,$10080
+	move.b #$01,$10080
+	;jsr flashdiod
+        rts
+printmsg:
+	move.l #$4020,a4
+	move.b #14,d5		;langd av'FELAKTIG KOD!'
+	jsr printstring
+	rts
 printchar:			;utskrift i terminal
 	move.b d5,-(a7)		;Spara undan d5 (bit 7-0) pp stacken
 waittx:
@@ -75,7 +81,7 @@ printstring:
 ;vet vi att alla tecken blir utskrivna
         move.b (a4)+,d4 ;skickar vidare M(a4) till d4
         jsr printchar   ;subrutinsanrop
-        sub.b #1,d5     ;minskar langden pa strangen med 1
+        sub.b #1,d5     ;minskar lÃ¤ngden pÃ¥ strâangen med 1
         beq skip1        ;om d5=0 ghoppar vi tillbaka till setup
         bra printstring ;annars printstring
 
@@ -86,29 +92,31 @@ deactivatealarm:
 ;Utargument: Inga
 ;Funktion: Slaacker lysdioden kopplad till PIAA
 ;har kan man helt enkelt kolla pa forelasningsanteckningarna fran fo4:
-	move.l $10080,$10082
-	and #$FE,$10082		;slacker lampan
-	move.l $10082,$10080
+	;move.l $10080,$10082
+	;and #$FE,$10082		;slacker lampan
+	;move.l $10082,$10080
+	move.b #$00,$10080
 	rts			;undrar om denna rts behovs
 	
 getkey:
+	move.b #$00,d4
         move.b $10082,d5 ;input piab
-        move.b $4000,d6  ;tidigare input
+        move.b $4005,d6  ;tidigare input
 
-        move.b d5,$4000 ;spara ny input
-        move.b d6,$4002 ;spara gammal input
+        move.b d5,$4005 ;spara ny input
+        move.b d6,$4004 ;spara gammal input
 
         and.b  #$10,d5 	;ny strobe
         and.b  #$10,d6 	;tidigare strobe
         lsr.b  #4,d5   	;strobe till bit 1
         lsr.b  #4,d6   	;strobe till  bit 1
 
-        cmp.b  #$0,d6 	;nostrobe
-        bne skip2
-strobe:
+        cmp.b  #$0,d6 	
+        bne strobe_0	;om strobe==1
+strobe_0:
         cmp.b  #$1,d5 	;kollar om strobe
         bne skip2
-        move.b $4000,d4 ; Fetch input
+        move.b $4005,d4 ; Fetch input
         and.b  #$0f,d4  ; Zero out the four MSB bits
         jsr addkey
         rts     	; Return input to d4
@@ -118,14 +126,14 @@ skip2:
 	
 
 addkey:
-;;;  Inargument: Vald tangent i d4
-;;;  Utargument: Inga
-;;;  Funktion: Flyttar innehallet pa $4001-$4003 bakat en byte till
-;;;  $4000-$4002. Lagrar sedan innehallet i d4 pa adress $4003.
-        cmp.b #9,d4     ;kollar om hexkey ar 'A'->aktivera alarm
+;Inargument: Vald tangent i d4
+;Utargument: Inga
+;Funktion: Flyttar innehallet pa $4001-$4003 bakat en byte till
+;$4000-$4002. Lagrar sedan innehallet i d4 pa adress $4003.
+        cmp.b #9,d4     ;kollar om hexkey ar 'A'->aktivaera alarm
         bgt skip3
         move.l $4000,d3
-        lsl.l #8,d3     ;fortsatter vidare i strangen
+        lsl.l #8,d3     ;flyttar 4001-4003 till 4000-4002
         move.l d3,$4000
         move.b d4,$4003 ;flyttar tillbaka d3 till 4 senaste hexa-tecknen
         rts             ;ska det inte vara 4001-4003 som flyttas till 4000-4002
@@ -161,4 +169,25 @@ correct:
 	move.b #1,d4	;checkcode hoppar hit om d2 och d3 ar samma
 	rts
 
-
+printerror:
+        move.b #'F',$4020 	;meddelande
+        move.b #'E',$4021
+	move.b #'L',$4022
+        move.b #'A',$4023
+        move.b #'K',$4024
+        move.b #'T',$4025
+        move.b #'I',$4026
+        move.b #'G',$4027
+        move.b #' ',$4028
+        move.b #'K',$4029
+        move.b #'O',$402A
+        move.b #'D',$402B
+        move.b #'!',$402C
+	rts
+code:	
+	move.b #$00,$4010	;kombination for avlarmning
+        move.b #$00,$4011
+        move.b #$00,$4012
+        move.b #$00,$4013
+	rts
+	
