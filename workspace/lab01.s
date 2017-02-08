@@ -17,37 +17,42 @@ setup:
 	jsr printerror
 	jsr code
 	jsr clearinput		;rensa inbuffer
+	;jsr setupflashdiod
 	bra disable		;avaktivera larm
+
 enable:
 	jsr activatealarm
+	;jsr flashdiod
+	;jsr update_diod	;snabb uppdatering fran address (som ev. ej ar andrad)
 	jsr getkey
-	cmp.b #$f,d4
-	beq testcode
+	cmp.b #$f,d4		;; nollstalls inte d4 vid skip2?
+	beq testcode 		; vanta pa att f trycks -> testa kod
 	bra enable
 testcode:
 	jsr checkcode
 	cmp.b #1,d4
-	bra disable
-
+	bra disable		; om ratt kod (d4=1) disable
+				; annars felmedelande och enable
 wrongcode:
 	jsr printmsg
 	bra enable
 disable:
 	jsr deactivatealarm
 	jsr clearinput
+	;jsr setupselfactivate
+	;jsr selfactivate	; aktiverar larm efter 5 sek om ej knapp (utom A) trycks
 disable_func:	
 	jsr getkey
 	cmp.b #$a,d4
-	bne disable_func
+	bne disable_func	; vanta pa att a trycks -> enable
 	bra enable
 	
 activatealarm:
 ;samma har som de-.s las forelasnsanteckningar fran fo 04
 ;move.l $10080,$10082
-;or #$01,$10082  ;taÂÂnd lampan
+;or #$01,$10082  ;tand lampan
 ;move.l $10082,$10080
 	move.b #$01,$10080
-	;jsr flashdiod
         rts
 printmsg:
 	move.l #$4020,a4
@@ -79,11 +84,11 @@ printstring:
 ;Langd pa strangen i d5
 ;vi kan loopa mha printchar och narlangden av d5 ar 0
 ;vet vi att alla tecken blir utskrivna
-        move.b (a4)+,d4 ;skickar vidare M(a4) till d4
-        jsr printchar   ;subrutinsanrop
-        sub.b #1,d5     ;minskar lÃ¤ngden pÃ¥ strâangen med 1
-        beq skip1        ;om d5=0 ghoppar vi tillbaka till setup
-        bra printstring ;annars printstring
+        move.b (a4)+,d4 	;skickar vidare M(a4) till d4
+        jsr printchar   	;subrutinsanrop
+        sub.b #1,d5     	;minskar langden pa strangen med 1
+        beq skip1        	;om d5=0 hoppar vi tillbaka till setup
+        bra printstring 	;annars printstring
 
 skip1:	   rts             	;anropas om d5=0
 
@@ -112,10 +117,10 @@ getkey:
         lsr.b  #4,d6   	;strobe till  bit 1
 
         cmp.b  #$0,d6 	
-        bne strobe_0	;om strobe==1
+        bne strobe_0	;om strobe==1  ;; skip2? dvs rts om strobe d6 var 1
 strobe_0:
         cmp.b  #$1,d5 	;kollar om strobe
-        bne skip2
+        bne skip2	;nar strobe = 0 => skip 2
         move.b $4005,d4 ; Fetch input
         and.b  #$0f,d4  ; Zero out the four MSB bits
         jsr addkey
@@ -190,4 +195,83 @@ code:
         move.b #$00,$4012
         move.b #$00,$4013
 	rts
+
+update_diod:
+	move.l $4300,$10080	; lagger till ev. ny info pa 10080
+	rts
+
+setupflashdiod:
+	move.b #0,$4300		;tillstand (1=tand, 0=slackt), istallet for att hemta fran PIA
+	move.l #0,$4400		;raknare
+	move.l #1000,$4500	;satt fordrojning till 1 sek
+
+flashdiod:
+; diod blinkar med 1 Hz. Raknar +1 och hoppar tillbaka till enable tills raknat klart, da togglar.
+	;move.b $10082,d5 	;input piab
+        ;and.b  #$10,d5 		;strobe
+	;lsr.b  #4,d5   		;strobe till bit 1
+	;cmp.b #1,d5
+	;beq getkey		;om strobe=1 hoppa till getkey
+	; alt om strobe finns sparad
 	
+	move.l $4400,d1 	;rakanre till d1
+	add.l #1,d1		;+1
+	move.l d1,$4400		;spara
+
+	move.l $4400,d2		;fordrojning till d2
+	cpm.l d1,d2		;raknat klart?
+	beq togglediod		;toggla om sant, annars hoppa tillbaka till enable
+	rts
+
+togglediod:
+	move.b $4300,d3		;tillstand till d3
+	xor.b #01,d3		;toggla tillstand pa bit 1
+	move.b d3,$4300		;spara tillstand
+	move.l #0,$4400		;nollstall raknare
+	rts
+
+
+selfactivate:
+; Aktiverar larm efter fem sekunder. 
+; Om en knapp trycks innan dess blir larmet permanent avstangt, forutom om A trycks.
+	
+	move.l #0,$4600		;raknare
+	move.l #5000,$4500	;satt fordrojning till 5 sekunder
+	jsr wait
+	rts
+	
+wait:
+	;move.l $10082,d5 	;sparar data fran PIAA till d5, (behovs ej om d4 fran getkey funkar)
+	jsr getkey		;;beroende pa om getkey vantar pa input
+				;;annars kan ha d4 till nagot stort och ta blt f, sa 
+				;;eller stroben
+	cmp.b #f,d4
+	blt checkA      	;hex-key d4 < F (dvs ingen knapptryckning) branch
+
+	add #1,d0
+	cpm $4500,d0
+	ben wait		;tid < 5 sek => wait
+	jsr enable		;5 har passerat
+	rts
+
+checkA:
+	cpm #$a,d4
+	beq enable		;om d4 = A => enable alarm
+	bra disable_func	;annars hoppa till disable_funk
+	rts
+
+
+
+selfactivate:
+	move.l $4600,d0		;raknare till d0
+	add #1,d0		;+1
+	move.l d0,$4600		;spara
+	cpm $4500,d0		;jamfor raknare med 5s fordrojning
+	beq enable		;enable om 5 sekunder passerat
+
+	cmp.b #9,d4
+	bgt
+	rts
+
+
+
