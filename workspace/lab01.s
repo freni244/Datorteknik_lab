@@ -38,12 +38,13 @@ wrongcode:
 	bra enable
 disable:
 	jsr deactivatealarm
-	jsr edit		;har kommer edit for koden for forsta gangen
+	;;jsr edit		;har kommer edit for koden for forsta gangen
 	jsr clearinput
 	;jsr setupselfactivate
 	;jsr selfactivate aktiverar larm efter 5 sek om ej knapp (utom A) trycks
 disable_func:	
 	jsr getkey
+	jsr edit   	;;har istallet sa att den ar med i loopen
 	cmp.b #$a,d4
 	bne disable_func	; vanta pa att a trycks -> enable
 	bra enable
@@ -128,7 +129,7 @@ strobe_0:
         cmp.b  #$1,d5 	;kollar om strobe
         bne skip2	;nar strobe = 0 => skip 2
         move.b $4005,d4 ;input
-        and.b  #$0f,d4  
+        and.b  #$0f,d4  ;ty flyttar och sparar 4b-key 8 bitar
         jsr addkey
         rts     	
 skip2:
@@ -144,12 +145,15 @@ addkey:
         cmp.b #9,d4     ;kollar om hexkey ar 'A'->aktivaera alarm
         bgt skip3
         move.l $4000,d3
-	move.b $4000,d7
-	move.l d7,$4006
-	lsl.l #8,d7
-	lsl.l #8,d3     ;flyttar 4001-4003 till 4000-4002
+	move.b $4000,d7 ;ÓutgaendeÓ siffra av 4-senaste till d7
+	move.l $4006,d1 ;flytta 5-8-senaste till d1
+	lsl.l #8,d3     ;skiftar 4001-4003 till 4000-4002
+	lsl.l #8,d1	;skiftar 4007-4009 till 4006-4008
 	move.l d3,$4000
         move.b d4,$4003 ;flyttar tillbaka d3 till 4 senaste hexa-tecknen
+	move.l d1,4006
+	move.b d7,$4009	;spara ÓutgaendeÓ siffra pa 4009
+
 	
 	rts             ;ska det inte vara 4001-4003 som flyttas till 4000-4002
 ;;; ; blir det inte lsr.l #8 4003 ($a $b $c $d) -> ($0 $a $b $c)
@@ -276,6 +280,35 @@ changecode:
 	move.l $4006,a2		;sparar 32bit tidigare input (4006-4006) i a2
 	cmp.l a1,a2		;har vi skrivit in samma 4siffriga kod 2 ganger?
 	bne skip4		;nej->skippa kodbytet
-	move.l a1,$4010		;ja->byt kod
+	jsr writetnewkode	;ja->byt kod
+	move.l $4012,a3		;sparar 32bit ny kod (4012-4015) i a3
+	move.l a3,$4010		;spara ny kod
 	
 skip4:	rts
+
+writetnewkode:
+	move.b #4,$6000 	;raknare	
+wrtiteloop:
+	jsr getkey		;vanta till ny key
+	addnewkey		;lagg till ny key
+	
+	move.b $6000,d1		;hamta raknare
+	sub.b #1,d1		;minska 
+	move.b d1,$6000		;spara
+
+	cmp.b #0,d1		;skrivit 4 siffror?
+	bne wrtiteloop		;nej->loop
+	rts			;ja->hoppa tillbaka
+
+addnewkey:
+;Inargument: Vald tangent i d4
+;Utargument: Inga
+;Funktion: Lagger till ny key i kod pa address 4012-4015, som addkey.
+        cmp.b #9,d4     ;kollar om hexkey ar 'A'->aktivaera alarm
+        bgt skip3
+        move.l $4012,d3
+	lsl.l #8,d3     ;skiftar 4013-4015 till 4012-4014 (4015 ledig)
+	move.l d3,$4012
+        move.b d4,$4015 ;flyttar senaste hexa-tecknen till 4015
+	rts
+skip5:	  rts
