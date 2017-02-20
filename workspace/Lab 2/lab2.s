@@ -8,7 +8,11 @@ setup:
 	move.l #AVBH,$074	; Ñ..- AVBH -..- avbrottsniva-5
 	and.w #F8FF,sr		; andrar avbrottsnivan i processorn till 0
 msg_loop:
-	jsr SKBAK
+	and.w #FEFF,sr		; andrar avbrottsnivan i processorn till &6 = %110 (%1111 1110 1111 1111)
+	jsr SKBAK		; nu kan bara rod knapp avbryta under utskrift
+	and.w #F8FF,sr		; avbrottsniva 0
+	move.b #&1000,d0	; flyttar 1000 till d0
+	jsr DELAY		; 1000 ms = 1 s fordrojning
 	bra msg_loop
 	
 AVBV:
