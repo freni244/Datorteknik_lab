@@ -4,11 +4,9 @@ setup:
 	jsr setup_interrupt	;satter upp avbrott (le2)
 	jsr setup_pia		;DDR(A/B) CR(A/B)-7 (la1,la2.7)
 	and.w #$f8ff,SR		;avbrottsniva i2i1i0=#$000 (le2)
-	move #$8000,d7
-
+	move #$8000,d7		;delay
 	move.b #$ff,d6		;satter spelets borjan som serve
 	move.b #$80,d2		;borjar med bollen pa A-sidan
-	move #$8000,d7
 loop:
 	cmp.b #0,d2		;bollen ur spel?
 	beq out			;poangutdelning och loop
@@ -36,7 +34,7 @@ update_led:
 	and.w #$f8ff,SR		;avblockerar avbrott
 	rts
 point:
-	or.w #$700,SR		;laser ut andra avbrott
+	or.w #$700,SR		;blockerar avbrott
 	cmp.b #00,d5		;kollar riktning pa bollen
 	beq point_B		;om bollen har riktning mot A
 point_A:			;annars riktning mot B
@@ -65,7 +63,7 @@ init_d:
 	move.b #0,d2		;diod
 	move.b #0,d3		;poang A (V)
 	move.b #0,d4		;poang B (H)
-	move.b #0,d5		;riktning pa bollen: 0O=V ff=H
+	move.b #$ff,d5		;riktning pa bollen: 0O=V ff=H
 	move.b #0,d6		;serve: 00=ja ff=nej
 	move.b #0,d7		;static delay
 	rts
