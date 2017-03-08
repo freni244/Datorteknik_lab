@@ -18,7 +18,7 @@ bcd:
 bcd_loop:
 	move.b (a1),d2		  ; hamta BCD-del
 	add.b d3,d2		  ; rakna upp med ett om d3 = 1
-	jsr bcd_carry	  	  ; om carry d3=1 annars d3 = 0
+	jsr bcd_carry	  	  ; om carry => d3=1, annars d3 = 0
 	move.b d2,(a1)+		  ; spara ny tid och byt decimal
 	
 	add.b #1,d1
@@ -31,8 +31,8 @@ bcd_loop:
 bcd_carry:
 	move.b #$0,d3		  ; carry-flagga noll
 	
-	move.b d1,d4		  ; klock position till d4
-        and.b #$1,d4		  ; position 1-4 grindas med 0001
+	move.b d1,d4		  ; klock position (0-3) till d4
+        and.b #$1,d4		  ; position 0-3 grindas med 0001
         beq.b carry_ten	 	  ; branch om z=1 (dvs d4 = 0000, eller 0010)
 				  ; annars position 2, eller 4 (0001, 0011)
 
@@ -57,7 +57,7 @@ mux:
         move.b (a1),d1		  ; aktiv display
 	
 	and.l #$3,d1		  ; maska ut 2 bitar (00, 01, 10, 11 del)
-	jsr select_num		  ; hitta tid-siffra (= d3)
+	jsr select_num		  ; hitta aktiv-tid (= d3)
 	
 	;; Siffra ur tabell:
 	;; adress = tabellstart + index(0-9)
@@ -79,7 +79,7 @@ select_num:
 	move.l #$3000,d2	  ; #tidsadress
         add.b d1,d2	  	  ; #aktiv-tid = display + #tidsadress
         move.l d2,a2
-        move.b (a2),d3		  ; (#aktiv-tid) ger tid-siffra
+        move.b (a2),d3		  ; (#aktiv-tid)
         rts
 
 piainit:
