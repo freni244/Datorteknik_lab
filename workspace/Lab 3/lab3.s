@@ -1,6 +1,6 @@
 setup:
 	move.l #$7000,a7
-	move.l #$0,$3000 	  ; starttid 00:00
+	move.l #$0,$900 	  ; starttid 00:00
 	jsr piainit
 	and.w #$F8FF,SR		  ; avb.niva 0 (SR = 1111 1000 1111 1111)
 
@@ -11,7 +11,7 @@ main_loop:
 bcd:
 	tst.b $10082		  ; laser fran PIAB —> nolstaller flaggor i CRB
 	movem.l a0-a6/d0-d7,-(a7) ; Sparar register
-	move.l $3000,a1		  ; hamta tid (hela 00:00 32-bitar)
+	move.l #$900,a1		  ; hamta tid (hela 00:00 32-bitar)
 	move.b #$0,d1		  ; raknare = 0
 	move.b #$1,d3		  ; d3 carryflagga, avgor om rakna upp
 				  ; (start alltid 1 ty rakna 1 sek)
@@ -53,7 +53,7 @@ not_carry:
 mux:	
 	movem.l a0-a6/d0-d7,-(a7) ; Sparar register
 	tst.b $10080		  ; laser fran PIAA —> nolstaller flaggor i CRA
-	move.l #$3010,a1          ; #displayadress
+	move.l #$910,a1          ; #displayadress
         move.b (a1),d1		  ; aktiv display
 	
 	and.l #$3,d1		  ; maska ut 2 bitar (00, 01, 10, 11 del)
@@ -76,7 +76,7 @@ mux:
 	movem.l (a7)+,a0-a6/d0-d7 ; aterstall register
 	rte
 select_num:
-	move.l #$3000,d2	  ; #tidsadress
+	move.l #$900,d2	  ; #tidsadress
         add.b d1,d2	  	  ; #aktiv-tid = display + #tidsadress
         move.l d2,a2
         move.b (a2),d3		  ; (#aktiv-tid)
@@ -113,5 +113,4 @@ SJUSEGTAB:
 
 ;; 1 Hz till CB1 (BCD)
 ;; 1000 Hz till CA1 (MUX)
-; test: move.l #$01020408,$3010
-; Hade kunnat anvanda bara #$900
+; test: move.l #$01020408,$900
